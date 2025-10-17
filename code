@@ -1,0 +1,169 @@
+HTML:
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Weather Dashboard</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <div class="container">
+    <h1>🌤️ Weather Dashboard</h1>
+    
+    <div class="search-section">
+      <input type="text" id="cityInput" placeholder="Enter city name" />
+      <button onclick="searchWeather()">Search</button>
+    </div>
+
+    <div id="history"></div>
+
+    <div class="weather-display">
+      <div id="currentWeather" class="card"></div>
+      <div id="forecast" class="forecast-container"></div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
+
+CSS:
+body {
+  font-family: Arial, sans-serif;
+  background-color: #eef2f3;
+  margin: 0;
+  padding: 20px;
+}
+
+.container {
+  max-width: 800px;
+  margin: auto;
+  text-align: center;
+}
+
+.search-section {
+  margin-bottom: 20px;
+}
+
+input[type="text"] {
+  padding: 10px;
+  width: 60%;
+  font-size: 16px;
+}
+
+button {
+  padding: 10px 15px;
+  font-size: 16px;
+  margin-left: 10px;
+}
+
+.card {
+  background-color: white;
+  padding: 20px;
+  margin-top: 20px;
+  border-radius: 5px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.forecast-container {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.forecast-card {
+  background-color: #ffffff;
+  padding: 10px;
+  width: 18%;
+  border-radius: 5px;
+  box-shadow: 0 0 5px rgba(0,0,0,0.1);
+}
+
+#history button {
+  margin: 5px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+JS:
+const apiKey = 'YOUR_API_KEY'; // 🔐 Replace with your OpenWeatherMap API key
+
+function searchWeather() {
+  const city = document.getElementById('cityInput').value.trim();
+  if (!city) return;
+  getWeather(city);
+  saveToHistory(city);
+}
+
+function getWeather(city) {
+  const currentUrl = https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${apiKey};
+  const forecastUrl = https://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${apiKey};
+
+  // Current Weather
+  fetch(currentUrl)
+    .then(res => res.json())
+    .then(data => {
+      if (data.cod !== 200) {
+        document.getElementById('currentWeather').innerHTML = <p>City not found.</p>;
+        return;
+      }
+
+      const { name, main, weather, wind } = data;
+      const html = `
+        <h2>${name}</h2>
+        <p>${weather[0].description}</p>
+        <img src="http://openweathermap.org/img/wn/${weather[0].icon}@2x.png" />
+        <p>🌡️ Temp: ${main.temp}°C</p>
+        <p>💧 Humidity: ${main.humidity}%</p>
+        <p>💨 Wind: ${wind.speed} m/s</p>
+      `;
+      document.getElementById('currentWeather').innerHTML = html;
+    });
+
+  // 5-Day Forecast
+  fetch(forecastUrl)
+    .then(res => res.json())
+    .then(data => {
+      const forecast = data.list.filter(item => item.dt_txt.includes("12:00:00")); // Midday forecast
+      let forecastHTML = '';
+      forecast.forEach(day => {
+        forecastHTML += `
+          <div class="forecast-card">
+            <h4>${new Date(day.dt_txt).toLocaleDateString()}</h4>
+            <img src="http://openweathermap.org/img/wn/${day.weather[0].icon}.png"/>
+            <p>🌡️ ${day.main.temp}°C</p>
+            <p>💧 ${day.main.humidity}%</p>
+          </div>
+        `;
+      });
+      document.getElementById('forecast').innerHTML = forecastHTML;
+    });
+}
+
+function saveToHistory(city) {
+  let history = JSON.parse(localStorage.getItem('weatherHistory')) || [];
+  if (!history.includes(city)) {
+    history.unshift(city);
+    if (history.length > 5) history.pop(); // Limit to last 5
+    localStorage.setItem('weatherHistory', JSON.stringify(history));
+    renderHistory();
+  }
+}
+
+function renderHistory() {
+  const history = JSON.parse(localStorage.getItem('weatherHistory')) || [];
+  const historyDiv = document.getElementById('history');
+  historyDiv.innerHTML = '';
+  history.forEach(city => {
+    const btn = document.createElement('button');
+    btn.textContent = city;
+    btn.onclick = () => getWeather(city);
+    historyDiv.appendChild(btn);
+  });
+}
+
+// Initial load
+renderHistory();
